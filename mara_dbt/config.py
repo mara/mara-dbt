@@ -1,5 +1,4 @@
 import pathlib
-import json
 
 
 def manifest_file_path() -> str:

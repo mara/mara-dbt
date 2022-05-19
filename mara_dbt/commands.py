@@ -1,6 +1,5 @@
 import json
-from mara_page import _, html
-from mara_pipelines.commands.bash import RunBash
+from mara_page import _
 from mara_pipelines.pipelines import Command
 
 from . import config
