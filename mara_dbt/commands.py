@@ -23,7 +23,7 @@ class _DbtCommand(Command):
         self.db_alias = db_alias
 
     def shell_command(self):
-        return (f'dbt {self._dbt_verb}'
+        return (f'dbt --no-use-colors {self._dbt_verb}'
                 + (f' --profiles-dir {config.profiles_dir()}' if config.profiles_dir() else '')
                 + (f' --profile {config.profile()}' if config.profile() else '')
                 + (f' --target {self.db_alias}' if self.db_alias else ''))
