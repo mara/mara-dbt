@@ -22,7 +22,7 @@ def variables() -> dict:
 
 def profiles_dir() -> str:
     """ The folder in which the dbt profiles are saved. If None, ~/.dbt/ is used (dbt default) """
-    return '.dbt'
+    return None
 
 def profile() -> str:
     """ Which dbt profile to use. If not set the default profile will be used """
