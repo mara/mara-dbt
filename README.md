@@ -1,24 +1,23 @@
 Mara dbt
 ========
 
-A lightweight integration of [dbt](https://www.getdbt.com/) into the mara framework.
-
-:warning: This package is under development.
+A integration of [dbt](https://www.getdbt.com/) into the [Mara Framework](https://github.com/mara).
 
 &nbsp;
 
 Installation
 ============
 
-*WIP*
-
 To use the library directly:
 
 ```bash
-pip install git+https://github.com/mara/mara-dbt.git
+pip install mara-dbt
 ```
 
-Add the following to your `.gitignore` file
+dbt Project inside the Mara project
+===================================
+
+You can choose to use a dbt project inside the mara project. To do so, add the following to your `.gitignore` file
 
 ``` .gitignore
 # dbt
@@ -41,29 +40,3 @@ flask mara_dbt.setup
 When using a git repository you should commit the files shown in `git status`.
 
 &nbsp;
-
-Documentation
-=============
-
-*WIP*
-
-This package will generate a dbt project `mara` in your mara project root path with a dbt profile using dbs configured in `mara_db.config.dbs`.
-
-### Sample Pipeline
-
-``` python
-import pathlib
-
-from mara_pipelines.pipelines import Pipeline
-from mara_dbt.integration import load_manifest, add_nodes_from_manifest
-
-
-pipeline = Pipeline(
-    id="dbt",
-    description="Pipeline executing the dbt models",
-    base_path=pathlib.Path(__file__).parent)
-
-manifest = load_manifest()
-add_nodes_from_manifest(pipeline, manifest, add_model_tests=False)
-
-```
