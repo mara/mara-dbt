@@ -210,3 +210,42 @@ class DbtTest(_DbtCommand):
             ('selector', _.tt[self.selector] if self.selector else None),
             ('variables', _.tt[json.dump(self.variables)] if self.variables else None)
         ]
+
+
+
+class _DbtCloudCommand(Command):
+    def __init__(self):
+        """
+        Executes a dbt command against the cloud
+        """
+        super().__init__()
+
+    def shell_command(self):
+        return (
+                (f'DBT_CLOUD_HOST={config.dbt_cloud_host()} ' if config.dbt_cloud_host() else '') +
+                (f'DBT_CLOUD_API_TOKEN={config.dbt_cloud_api_token()} ' if config.dbt_cloud_api_token() else '') +
+                (f'DBT_CLOUD_ACCOUNT_ID={config.dbt_cloud_account_id()} ' if config.dbt_cloud_account_id() else '') +
+                'dbt-cloud')
+
+
+class RunDbtJob(_DbtCloudCommand):
+    def __init__(self, job_id: int, cause: str = None, wait: bool = True):
+        
+        """
+        Starts a dbt cloud job.
+
+        Args:
+            job_id: The job id of the cloud job
+            cause: The cause text send during execution
+            wait: If the command waits until the job is finished.
+        """
+        super().__init__()
+        self.job_id = job_id
+        self.cause = cause
+        self.wait = wait
+    
+    def shell_command(self):
+        return (super().shell_command()
+            + f' job run --job-id {self.job_id}'
+            + (f' --cause {shlex.quote(self.cause)}' if self.cause else '')
+            + (' --wait' if self.wait else ''))

@@ -24,6 +24,27 @@ def dbt_variables() -> dict:
     return {}
 
 
+def dbt_cloud_host() -> str:
+    """
+    dbt Cloud host (cloud.getdbt.com (multi-tenant instance) by default if the environment variable is not set)
+    """
+    return None
+
+
+def dbt_cloud_api_token() -> str:
+    """
+    API authentication key
+    """
+    return None
+
+
+def dbt_cloud_account_id() -> str:
+    """
+    Numeric ID of the dbt Cloud account
+    """
+    return None
+
+
 # -----------------------------------------------------------------------------
 # Advanced config 
 # -----------------------------------------------------------------------------
