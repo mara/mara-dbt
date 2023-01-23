@@ -29,6 +29,7 @@ class _DbtCommand(Command):
             variables.update(self.variables)
 
         return (f'dbt --no-use-colors {self._dbt_command}'
+                + (f' --project-dir {config.project_dir()}' if config.project_dir() else '')
                 + (f' --profiles-dir {config.profiles_dir()}' if config.profiles_dir() else '')
                 + (f' --profile {config.profile()}' if config.profile() else '')
                 + (f' -t {self.target}' if self.target else '')
