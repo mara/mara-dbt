@@ -1,5 +1,6 @@
 import json
 import shlex
+from warnings import warn
 
 from mara_page import _
 from mara_pipelines.pipelines import Command
@@ -229,7 +230,7 @@ class _DbtCloudCommand(Command):
                 'dbt-cloud')
 
 
-class RunDbtJob(_DbtCloudCommand):
+class RunDbtCloudJob(_DbtCloudCommand):
     def __init__(self, job_id: int, cause: str = None, wait: bool = True):
         
         """
@@ -250,3 +251,10 @@ class RunDbtJob(_DbtCloudCommand):
             + f' job run --job-id {self.job_id}'
             + (f' --cause {shlex.quote(self.cause)}' if self.cause else '')
             + (' --wait' if self.wait else ''))
+
+
+# deprecated. TBD: Remove in 1.0.0
+class RunDbtJob(RunDbtCloudJob):
+    def __init_subclass__(cls) -> None:
+        warn("Class RunDbtJob has been renamed to RunDbtCloudJob", DeprecationWarning, stacklevel=2)
+        return super().__init_subclass__()
