@@ -1,6 +1,7 @@
 import json
 import shlex
 from warnings import warn
+from typing import Optional, List, Tuple, Union
 
 from mara_page import _
 from mara_pipelines.pipelines import Command
@@ -9,7 +10,8 @@ from . import config
 
 
 class _DbtCommand(Command):
-    def __init__(self, command: str, target: str = None, variables: dict = None):
+    """ A base class for a dbt cli command """
+    def __init__(self, command: str, target: Optional[str] = None, variables: Optional[dict] = None):
         """
         Executes a dbt command
 
@@ -29,107 +31,184 @@ class _DbtCommand(Command):
         if self.variables:
             variables.update(self.variables)
 
-        return (f'dbt --no-use-colors {self._dbt_command}'
+        return (f'dbt -x --no-use-colors {self._dbt_command}'
                 + (f' --project-dir {config.project_dir()}' if config.project_dir() else '')
                 + (f' --profiles-dir {config.profiles_dir()}' if config.profiles_dir() else '')
                 + (f' --profile {config.profile()}' if config.profile() else '')
                 + (f' -t {self.target}' if self.target else '')
                 + (f' --vars {shlex.quote(str(variables))}' if variables else ''))
 
+    def html_doc_items(self) -> List[Tuple[str, str]]:
+        return [
+            ('target', _.tt[self.target] if self.target else None),
+            ('variables', _.tt[json.dump(self.variables)] if self.variables else None),
+        ]
 
-class DbtSeed(_DbtCommand):
-    def __init__(self, models: [str] = None, exclude_models: [str] = None,
-                 selector: str = None, full_refresh: bool = False,
-                 target: str = None, variables: dict = None):
+
+class _DbtSelectCommand(_DbtCommand):
+    """ A base class for a dbt cli command which supports selecting nodes """
+    def __init__(self, command: str, select: Optional[Union[List[str], str]] = None, exclude: Optional[Union[List[str], str]] = None,
+                 selector: Optional[str] = None, full_refresh: Optional[bool] = None, target: Optional[str] = None, variables: Optional[dict] = None):
+        """
+        Executes a dbt command
+
+        Args
+            command: the dbt command
+            select: Specify the nodes to include.
+            exclude_models: Specify the nodes to exclude.
+            selector: The selector name to use, as defined in selectors.yml
+            full_refresh: If specified, dbt will drop seeds and/or incremental models and fully-recalculate the models from their definition.
+            target: the dbt target. If not set config.dbt_target() is used.
+            variables: Supply variables to the project. This argument
+                       overrides variables defined in config.dbt_variables()
+        """
+        super().__init__(command, target, variables)
+        self.select = select
+        self.exclude = exclude
+        self.selector = selector
+        self.full_refresh = full_refresh
+
+    def shell_command(self):
+        command = super().shell_command()
+        selects = ' '.join(self.select) if isinstance(self.select, list) else self.select
+        excludes = ' '.join(self.exclude) if isinstance(self.exclude, list) else self.exclude
+        command += ((f' -s {selects}' if selects else '')
+                   + (f' --exclude {excludes}' if excludes else '')
+                   + (f' --selector {self.selector}' if self.selector else '')
+                   + (f' --full-refresh' if self.full_refresh else ''))
+        return command
+
+    def html_doc_items(self) -> List[Tuple[str, str]]:
+        return super().html_doc_items() + [
+            ('include nodes', _.tt[self.select] if self.select else None),
+            ('exclude nodes', _.tt[self.exclude] if self.exclude else None),
+            ('selector', _.tt[self.selector] if self.selector else None),
+            ('full refresh', _.tt[self.full_refresh] if self.full_refresh is not None else None),
+        ]
+
+
+class DbtDocsGenerate(_DbtSelectCommand):
+    def __init__(self, select: Optional[Union[List[str], str]] = None, exclude: Optional[Union[List[str], str]] = None,
+                 selector: Optional[str] = None, no_compile: bool = False,
+                 target: Optional[str] = None, variables: Optional[dict] = None) -> None:
+        """
+        Executes dbt docs generate
+
+        Args
+            select: Specify the nodes to include.
+            exclude: Specify the nodes to exclude.
+            selector: The selector name to use, as defined in selectors.yml
+            no_compile: Do not run "dbt compile" as part of docs generation
+            target: the dbt target. If not set config.dbt_target() is used.
+            variables: Supply variables to the project. This argument
+                       overrides variables defined in config.dbt_variables()
+        """
+        super().__init__('docs generate', select=select, exclude=exclude, selector=selector,
+                         target=target, variables=variables)
+        self.no_compile = no_compile
+
+    def shell_command(self):
+        command = super().shell_command()
+        command += (' --no-compile' if self.no_compile else '')
+        return command
+
+    def html_doc_items(self) -> List[Tuple[str, str]]:
+        return super().html_doc_items() + [
+            ('no compile', self.no_compile),
+        ]
+
+
+class DbtDeps(_DbtCommand):
+    def __init__(self, target: Optional[str] = None, variables: Optional[dict] = None):
+        """
+        Executes dbt deps
+
+        Args
+            target: the dbt target. If not set config.dbt_target() is used.
+            variables: Supply variables to the project. This argument
+                       overrides variables defined in config.dbt_variables()
+        """
+        super().__init__('deps', target=target, variables=variables)
+
+
+class DbtSeed(_DbtSelectCommand):
+    def __init__(self, select: Optional[Union[List[str], str]] = None, exclude: Optional[Union[List[str], str]] = None,
+                 selector: Optional[str] = None, full_refresh: bool = False,
+                 target: Optional[str] = None, variables: Optional[dict] = None, **kargs):
         """
         Executes dbt seed
 
         Args
-            models: Specify the nodes to include.
-            exclude_models: Specify the models to exclude.
+            select: Specify the nodes to include.
+            exclude: Specify the nodes to exclude.
             selector: The selector name to use, as defined in selectors.yml
             full_refresh: Drop existing seed tables and recreate them
             target: the dbt target. If not set config.dbt_target() is used.
             variables: Supply variables to the project. This argument
                        overrides variables defined in config.dbt_variables()
         """
-        super().__init__('seed', target=target, variables=variables)
-        self.models = models
-        self.exclude_models = exclude_models
-        self.selector = selector
-        self.full_refresh = full_refresh
-
-    def shell_command(self):
-        command = super().shell_command()
-        models = ' '.join(self.models) if self.models else None
-        exclude_models = ' '.join(self.exclude_models) if self.exclude_models else None
-        command += (' -x'
-                   + (f' --select {models}' if self.models else '')
-                   + (f' --exclude {exclude_models}' if self.exclude_models else '')
-                   + (f' --selector {self.selector}' if self.selector else '')
-                   + (' --full-refresh' if self.full_refresh else ''))
-        return command
-
-    def html_doc_items(self) -> [(str, str)]:
-        return [
-            ('target', _.tt[self.target] if self.target else None),
-            ('include models', _.tt[self.models] if self.models else None),
-            ('exclude models', _.tt[self.exclude_models] if self.exclude_models else None),
-            ('selector', _.tt[self.selector] if self.selector else None),
-            ('variables', _.tt[json.dump(self.variables)] if self.variables else None),
-            ('full refresh', _.tt[self.full_refresh])
-        ]
+        if select is None and 'models' in kargs:
+            select = kargs['model']
+        if exclude is None and 'exclude_models' in kargs:
+            exclude = kargs['exclude_models']
+        super().__init__('seed', select=select, exclude=exclude, selector=selector, full_refresh=full_refresh,
+                         target=target, variables=variables)
 
 
-class DbtSnapshot(_DbtCommand):
-    def __init__(self, models: [str] = None, exclude_models: [str] = None,
-        selector: str = None, target: str = None, variables: dict = None):
+class DbtBuild(_DbtSelectCommand):
+    def __init__(self, select: Optional[Union[List[str], str]] = None, exclude: Optional[Union[List[str], str]] = None,
+        selector: Optional[str] = None, full_refresh: bool = False,
+        target: Optional[str] = None, variables: Optional[dict] = None):
+        """
+        Executes dbt build
+
+        Args
+            select: Specify the nodes to include.
+            exclude: Specify the nodes to exclude.
+            selector: The selector name to use, as defined in selectors.yml
+            full_refresh: If specified, dbt will drop incremental models and
+                          fully-recalculate the incremental table from the model
+                          definition.
+            target: the dbt target. If not set config.dbt_target() is used.
+            variables: Supply variables to the project. This argument
+                       overrides variables defined in config.dbt_variables()
+        """
+        super().__init__('build', select=select, exclude=exclude, selector=selector, full_refresh=full_refresh,
+                         target=target, variables=variables)
+
+
+class DbtSnapshot(_DbtSelectCommand):
+    def __init__(self, select: Optional[Union[List[str], str]] = None, exclude: Optional[Union[List[str], str]] = None,
+        selector: Optional[str] = None, target: Optional[str] = None, variables: Optional[dict] = None, **kargs):
         """
         Executes dbt snapshot
 
         Args
-            models: Specify the nodes to include.
-            exclude_models: Specify the models to exclude.
+            select: Specify the nodes to include.
+            exclude: Specify the nodes to exclude.
             selector: The selector name to use, as defined in selectors.yml
             target: the dbt target. If not set config.dbt_target() is used.
             variables: Supply variables to the project. This argument
                        overrides variables defined in config.dbt_variables()
         """
-        super().__init__('run', target=target, variables=variables)
-        self.models = models
-        self.exclude_models = exclude_models
-        self.selector = selector
-
-    def shell_command(self):
-        command = super().shell_command()
-        models = ' '.join(self.models) if self.models else None
-        exclude_models = ' '.join(self.exclude_models) if self.exclude_models else None
-        command += (' -x'
-                   + (f' --models {models}' if self.models else '')
-                   + (f' --exclude {exclude_models}' if self.exclude_models else '')
-                   + (f' --selector {self.selector}' if self.selector else ''))
-        return command
-
-    def html_doc_items(self) -> [(str, str)]:
-        return [
-            ('target', _.tt[self.target] if self.target else None),
-            ('include models', _.tt[self.models] if self.models else None),
-            ('exclude models', _.tt[self.exclude_models] if self.exclude_models else None),
-            ('selector', _.tt[self.selector] if self.selector else None),
-            ('variables', _.tt[json.dump(self.variables)] if self.variables else None)
-        ]
+        if select is None and 'models' in kargs:
+            select = kargs['model']
+        if exclude is None and 'exclude_models' in kargs:
+            exclude = kargs['exclude_models']
+        super().__init__('run', select=select, exclude=exclude, selector=selector,
+                         target=target, variables=variables)
 
 
-class DbtRun(_DbtCommand):
-    def __init__(self, models: [str] = None, exclude_models: [str] = None,
-        selector: str = None, full_refresh: bool = False,
-        target: str = None, variables: dict = None):
+class DbtRun(_DbtSelectCommand):
+    def __init__(self, select: Optional[Union[List[str], str]] = None, exclude: Optional[Union[List[str], str]] = None,
+        selector: Optional[str] = None, full_refresh: bool = False,
+        target: Optional[str] = None, variables: Optional[dict] = None, **kargs):
         """
         Executes dbt run
 
         Args
-            models: Specify the nodes to include.
-            exclude_models: Specify the models to exclude.
+            select: Specify the nodes to include.
+            exclude: Specify the nodes to exclude.
             selector: The selector name to use, as defined in selectors.yml
             full_refresh: If specified, DBT will drop incremental models and
                           fully-recalculate the incremental table from the model
@@ -138,44 +217,46 @@ class DbtRun(_DbtCommand):
             variables: Supply variables to the project. This argument
                        overrides variables defined in config.dbt_variables()
         """
-        super().__init__('run', target=target, variables=variables)
-        self.models = models
-        self.exclude_models = exclude_models
-        self.selector = selector
-        self.full_refresh = full_refresh
-
-    def shell_command(self):
-        command = super().shell_command()
-        models = ' '.join(self.models) if self.models else None
-        exclude_models = ' '.join(self.exclude_models) if self.exclude_models else None
-        command += (' -x'
-                   + (f' --models {models}' if self.models else '')
-                   + (f' --exclude {exclude_models}' if self.exclude_models else '')
-                   + (f' --selector {self.selector}' if self.selector else '')
-                   + (' --full-refresh' if self.full_refresh else ''))
-        return command
-
-    def html_doc_items(self) -> [(str, str)]:
-        return [
-            ('target', _.tt[self.target] if self.target else None),
-            ('include models', _.tt[self.models] if self.models else None),
-            ('exclude models', _.tt[self.exclude_models] if self.exclude_models else None),
-            ('selector', _.tt[self.selector] if self.selector else None),
-            ('variables', _.tt[json.dump(self.variables)] if self.variables else None),
-            ('full refresh', _.tt[self.full_refresh])
-        ]
+        if select is None and 'models' in kargs:
+            select = kargs['model']
+        if exclude is None and 'exclude_models' in kargs:
+            exclude = kargs['exclude_models']
+        super().__init__('run', select=select, exclude=exclude, selector=selector, full_refresh=full_refresh,
+                         target=target, variables=variables)
 
 
-class DbtTest(_DbtCommand):
-    def __init__(self, models: [str] = None, exclude_models: [str] = None,
-        selector: str = None, data_tests: bool = False, schema_tests: bool = False,
-        target: str = None, variables: dict = None):
+class DbtCompile(_DbtSelectCommand):
+    def __init__(self, select: Optional[Union[List[str], str]] = None, exclude: Optional[Union[List[str], str]] = None,
+        selector: Optional[str] = None, full_refresh: bool = False,
+        target: Optional[str] = None, variables: Optional[dict] = None):
+        """
+        Executes dbt compile
+
+        Args
+            select: Specify the nodes to include.
+            exclude: Specify the nodes to exclude.
+            selector: The selector name to use, as defined in selectors.yml
+            full_refresh: If specified, DBT will drop incremental models and
+                          fully-recalculate the incremental table from the model
+                          definition.
+            target: the dbt target. If not set config.dbt_target() is used.
+            variables: Supply variables to the project. This argument
+                       overrides variables defined in config.dbt_variables()
+        """
+        super().__init__('compile', select=select, exclude=exclude, selector=selector, full_refresh=full_refresh,
+                         target=target, variables=variables)
+        
+
+class DbtTest(_DbtSelectCommand):
+    def __init__(self, select: Optional[Union[List[str], str]] = None, exclude: Optional[Union[List[str], str]] = None,
+        selector: Optional[str] = None, data_tests: bool = False, schema_tests: bool = False,
+        target: Optional[str] = None, variables: Optional[dict] = None, **kargs):
         """
         Executes dbt test
 
         Args
-            models: Specify the nodes to include.
-            exclude_models: Specify the models to exclude.
+            select: Specify the nodes to include.
+            exclude: Specify the nodes to exclude.
             selector: The selector name to use, as defined in selectors.yml
             data_tests: Run data tests defined in "tests" directory.
             schema_tests: Run constraint validations from schema.yml files
@@ -183,34 +264,25 @@ class DbtTest(_DbtCommand):
             variables: Supply variables to the project. This argument
                        overrides variables defined in config.dbt_variables()
         """
-        super().__init__('test', target=target, variables=variables)
-        self.models = models
-        self.exclude_models = exclude_models
-        self.selector = selector
+        if select is None and 'models' in kargs:
+            select = kargs['model']
+        if exclude is None and 'exclude_models' in kargs:
+            exclude = kargs['exclude_models']
+        super().__init__('test', select=select, exclude=exclude, selector=selector,
+                         target=target, variables=variables)
         self.data_tests = data_tests
         self.schema_tests = schema_tests
 
     def shell_command(self):
         command = super().shell_command()
-        models = ' '.join(self.models) if self.models else None
-        exclude_models = ' '.join(self.exclude_models) if self.exclude_models else None
-        command += (' -x'
-                   + (f' --models {models}' if self.models else '')
-                   + (f' --exclude {exclude_models}' if self.exclude_models else '')
-                   + (' --data' if self.data_tests else '')
-                   + (' --schema' if self.data_tests else '')
-                   + (f' --selector {self.selector}' if self.selector else ''))
+        command += ((' --data' if self.data_tests else '')
+                   + (' --schema' if self.data_tests else ''))
         return command
 
-    def html_doc_items(self) -> [(str, str)]:
-        return [
-            ('target', _.tt[self.target] if self.target else None),
-            ('include models', _.tt[self.models] if self.models else None),
-            ('exclude models', _.tt[self.exclude_models] if self.exclude_models else None),
+    def html_doc_items(self) -> List[Tuple[str, str]]:
+        return super().html_doc_items() + [
             ('data tests', _.tt[self.data_tests]),
             ('schema tests', _.tt[self.schema_tests]),
-            ('selector', _.tt[self.selector] if self.selector else None),
-            ('variables', _.tt[json.dump(self.variables)] if self.variables else None)
         ]
 
 
@@ -231,7 +303,7 @@ class _DbtCloudCommand(Command):
 
 
 class RunDbtCloudJob(_DbtCloudCommand):
-    def __init__(self, job_id: int, cause: str = None, wait: bool = True):
+    def __init__(self, job_id: int, cause: Optional[str] = None, wait: bool = True):
         
         """
         Starts a dbt cloud job.
