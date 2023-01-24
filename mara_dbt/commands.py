@@ -148,8 +148,10 @@ class DbtSeed(_DbtSelectCommand):
                        overrides variables defined in config.dbt_variables()
         """
         if select is None and 'models' in kargs:
+            warn("Use parameter 'select' instead of 'models' in command DbtRun", DeprecationWarning, stacklevel=2)
             select = kargs['model']
         if exclude is None and 'exclude_models' in kargs:
+            warn("Use parameter 'exclude' instead of 'exclude_models' command DbtRun", DeprecationWarning, stacklevel=2)
             exclude = kargs['exclude_models']
         super().__init__('seed', select=select, exclude=exclude, selector=selector, full_refresh=full_refresh,
                          target=target, variables=variables)
@@ -192,8 +194,10 @@ class DbtSnapshot(_DbtSelectCommand):
                        overrides variables defined in config.dbt_variables()
         """
         if select is None and 'models' in kargs:
+            warn("Use parameter 'select' instead of 'models' in command DbtRun", DeprecationWarning, stacklevel=2)
             select = kargs['model']
         if exclude is None and 'exclude_models' in kargs:
+            warn("Use parameter 'exclude' instead of 'exclude_models' command DbtRun", DeprecationWarning, stacklevel=2)
             exclude = kargs['exclude_models']
         super().__init__('run', select=select, exclude=exclude, selector=selector,
                          target=target, variables=variables)
@@ -218,8 +222,10 @@ class DbtRun(_DbtSelectCommand):
                        overrides variables defined in config.dbt_variables()
         """
         if select is None and 'models' in kargs:
+            warn("Use parameter 'select' instead of 'models' in command DbtRun", DeprecationWarning, stacklevel=2)
             select = kargs['model']
         if exclude is None and 'exclude_models' in kargs:
+            warn("Use parameter 'exclude' instead of 'exclude_models' command DbtRun", DeprecationWarning, stacklevel=2)
             exclude = kargs['exclude_models']
         super().__init__('run', select=select, exclude=exclude, selector=selector, full_refresh=full_refresh,
                          target=target, variables=variables)
@@ -265,8 +271,10 @@ class DbtTest(_DbtSelectCommand):
                        overrides variables defined in config.dbt_variables()
         """
         if select is None and 'models' in kargs:
+            warn("Use parameter 'select' instead of 'models' in command DbtRun", DeprecationWarning, stacklevel=2)
             select = kargs['model']
         if exclude is None and 'exclude_models' in kargs:
+            warn("Use parameter 'exclude' instead of 'exclude_models' command DbtRun", DeprecationWarning, stacklevel=2)
             exclude = kargs['exclude_models']
         super().__init__('test', select=select, exclude=exclude, selector=selector,
                          target=target, variables=variables)
