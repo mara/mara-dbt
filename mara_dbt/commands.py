@@ -251,7 +251,7 @@ class DbtCompile(_DbtSelectCommand):
         """
         super().__init__('compile', select=select, exclude=exclude, selector=selector, full_refresh=full_refresh,
                          target=target, variables=variables)
-        
+
 
 class DbtTest(_DbtSelectCommand):
     def __init__(self, select: Optional[Union[List[str], str]] = None, exclude: Optional[Union[List[str], str]] = None,
@@ -312,7 +312,7 @@ class _DbtCloudCommand(Command):
 
 class RunDbtCloudJob(_DbtCloudCommand):
     def __init__(self, job_id: int, cause: Optional[str] = None, wait: bool = True):
-        
+
         """
         Starts a dbt cloud job.
 
@@ -325,7 +325,7 @@ class RunDbtCloudJob(_DbtCloudCommand):
         self.job_id = job_id
         self.cause = cause
         self.wait = wait
-    
+
     def shell_command(self):
         return (super().shell_command()
             + f' job run --job-id {self.job_id}'

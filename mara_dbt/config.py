@@ -6,7 +6,7 @@ from typing import Optional
 def dbt_target() -> Optional[str]:
     """
     The dbt default target to be used.
-    
+
     See as well:
       * https://docs.getdbt.com/docs/faqs/target-names
       * https://docs.getdbt.com/guides/legacy/managing-environments
@@ -17,7 +17,7 @@ def dbt_target() -> Optional[str]:
 def dbt_variables() -> dict:
     """
     Variables to be passed to all dbt commands.
-    
+
     They can be overriden in a mara command.
 
     See as well:
@@ -48,7 +48,7 @@ def dbt_cloud_account_id() -> Optional[str]:
 
 
 # -----------------------------------------------------------------------------
-# Advanced config 
+# Advanced config
 # -----------------------------------------------------------------------------
 
 def profiles_dir() -> Optional[str]:
